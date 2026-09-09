@@ -43,36 +43,17 @@ async def start(update: Update, context) -> None:
 
 
 def main() -> None:
-    """Start the bot."""
     token = os.environ.get("TELEGRAM_BOT_TOKEN")
     if not token:
         logger.error("TELEGRAM_BOT_TOKEN is not set in .env")
         return
 
     app = Application.builder().token(token).build()
-
-    # /start — show chat ID (useful for setting up ERROR_GROUP_CHAT_ID)
     app.add_handler(CommandHandler("start", start))
-
-    # All text messages — treat as logistics reports
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_report))
-
     logger.info("Bot started — waiting for messages...")
     app.run_polling(allowed_updates=Update.ALL_TYPES)
 
 
 if __name__ == "__main__":
-    import asyncio
-    
-    async def run():
-        token = os.environ.get("TELEGRAM_BOT_TOKEN")
-        if not token:
-            logger.error("TELEGRAM_BOT_TOKEN is not set in .env")
-            return
-        app = Application.builder().token(token).build()
-        app.add_handler(CommandHandler("start", start))
-        app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_report))
-        logger.info("Bot started — waiting for messages...")
-        await app.run_polling(allowed_updates=Update.ALL_TYPES)
-    
-    asyncio.run(run())
+    main()
