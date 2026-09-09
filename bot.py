@@ -1,4 +1,5 @@
 import os
+import asyncio
 import logging
 from dotenv import load_dotenv
 from telegram import Update
@@ -12,14 +13,23 @@ logging.basicConfig(
     format="%(asctime)s %(levelname)s %(name)s: %(message)s",
 )
 logger = logging.getLogger(__name__)
+
+
+async def start(update: Update, context) -> None:
+    chat_id = update.effective_chat.id
+    await update.message.reply_text(
+        f"👋 Salom! Men logistika hisobotlari botiman.\n\n"
+        f"Reys hisobotini yuboring — men uni Google Sheetsga kiritaman.\n\n"
+        f"📌 Bu chatning ID si: {chat_id}"
+    )
+
+
 def main() -> None:
     token = os.environ.get("TELEGRAM_BOT_TOKEN")
     if not token:
         logger.error("TELEGRAM_BOT_TOKEN is not set in .env")
         return
 
-    import asyncio
-    
     async def _run():
         app = Application.builder().token(token).build()
         app.add_handler(CommandHandler("start", start))
