@@ -62,4 +62,17 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    import asyncio
+    
+    async def run():
+        token = os.environ.get("TELEGRAM_BOT_TOKEN")
+        if not token:
+            logger.error("TELEGRAM_BOT_TOKEN is not set in .env")
+            return
+        app = Application.builder().token(token).build()
+        app.add_handler(CommandHandler("start", start))
+        app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_report))
+        logger.info("Bot started — waiting for messages...")
+        await app.run_polling(allowed_updates=Update.ALL_TYPES)
+    
+    asyncio.run(run())
