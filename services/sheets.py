@@ -120,22 +120,24 @@ async def append_to_reyslar(sheet_id: str, extracted: dict) -> None:
         jami,
     ]
 
-    def _write():
+        def _write():
         client = _get_client()
         spreadsheet = client.open_by_key(sheet_id)
         sheet = spreadsheet.worksheet(REYSLAR_SHEET)
 
-        # Find first empty row after header
+        # Find last row with data and write after it
         all_values = sheet.get_all_values()
-        first_empty = len(all_values) + 1
 
-        for i, r in enumerate(all_values[1:], start=2):
-            if not any(cell.strip() for cell in r):
-                first_empty = i
-                break
+        # Find last non-empty row
+        last_row = 1
+        for i, r in enumerate(all_values, start=1):
+            if any(cell.strip() for cell in r):
+                last_row = i
+
+        next_row = last_row + 1
 
         sheet.update(
-            f"A{first_empty}",
+            f"A{next_row}",
             [row],
             value_input_option="USER_ENTERED"
         )
