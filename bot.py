@@ -30,7 +30,7 @@ def main() -> None:
         logger.error("TELEGRAM_BOT_TOKEN is not set in .env")
         return
 
-        async def _run():
+    async def _run():
         app = Application.builder().token(token).build()
         app.add_handler(CommandHandler("start", start))
         app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_report))
