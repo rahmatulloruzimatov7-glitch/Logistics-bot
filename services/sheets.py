@@ -1,5 +1,6 @@
 """Google Sheets — read Malumotnoma and write to Reyslar sheet."""
 import asyncio
+import json
 import logging
 import os
 import time
@@ -16,21 +17,18 @@ SCOPES = [
 
 CREDENTIALS_PATH = Path(__file__).resolve().parent.parent / "credentials" / "service_account.json"
 
-# Sheet tab names
 MALUMOTNOMA_SHEET = "Malumotnoma"
 REYSLAR_SHEET = "Reyslar"
 
-# Malumotnoma column indices (0-based)
-COL_TV_DAVLAT_RAQAMI = 1   # B
-COL_HAYDOVCHI = 2          # C
-COL_TRANSPORT_TURI = 3     # D
-COL_PUNKTLAR = 7           # H
-COL_MIJOZLAR = 8           # I
-COL_SHARTNOMA = 10         # K
+COL_TV_DAVLAT_RAQAMI = 1
+COL_HAYDOVCHI = 2
+COL_TRANSPORT_TURI = 3
+COL_PUNKTLAR = 7
+COL_MIJOZLAR = 8
+COL_SHARTNOMA = 10
 
 
 def _get_client() -> gspread.Client:
-    import json
     sa_json = os.environ.get("GOOGLE_SERVICE_ACCOUNT_JSON")
     if sa_json:
         creds = Credentials.from_service_account_info(
@@ -44,7 +42,6 @@ def _get_client() -> gspread.Client:
 
 
 def _retry(fn, retries: int = 3, delay: float = 2.0):
-    """Retry wrapper for Sheets API calls — handles 429 rate limit errors."""
     for attempt in range(retries):
         try:
             return fn()
@@ -58,9 +55,6 @@ def _retry(fn, retries: int = 3, delay: float = 2.0):
 
 
 async def get_malumotnoma_data(sheet_id: str) -> dict:
-    """Read all reference data from Malumotnoma sheet.
-    Returns dict with lists for each column we validate against.
-    """
     def _read():
         client = _get_client()
         spreadsheet = client.open_by_key(sheet_id)
@@ -78,7 +72,7 @@ async def get_malumotnoma_data(sheet_id: str) -> dict:
         "shartnomalar": [],
     }
 
-    for row in rows[1:]:  # skip header row
+    for row in rows[1:]:
         def get_col(r, idx):
             return r[idx].strip() if idx < len(r) else ""
 
@@ -106,7 +100,6 @@ async def get_malumotnoma_data(sheet_id: str) -> dict:
 
 
 async def append_to_reyslar(sheet_id: str, extracted: dict) -> None:
-    """Append a new row to the Reyslar sheet."""
     naqd = extracted.get("naqd_tushum", 0) or 0
     naqdsiz = extracted.get("naqdsiz_tushum", 0) or 0
     jami = extracted.get("jami_tushum", naqd + naqdsiz) or (naqd + naqdsiz)
@@ -131,7 +124,21 @@ async def append_to_reyslar(sheet_id: str, extracted: dict) -> None:
         client = _get_client()
         spreadsheet = client.open_by_key(sheet_id)
         sheet = spreadsheet.worksheet(REYSLAR_SHEET)
-        sheet.append_row(row, value_input_option="USER_ENTERED")
+
+        # Find first empty row after header
+        all_values = sheet.get_all_values()
+        first_empty = len(all_values) + 1
+
+        for i, r in enumerate(all_values[1:], start=2):
+            if not any(cell.strip() for cell in r):
+                first_empty = i
+                break
+
+        sheet.update(
+            f"A{first_empty}",
+            [row],
+            value_input_option="USER_ENTERED"
+        )
 
     await asyncio.to_thread(lambda: _retry(_write))
-    logger.info("Appended row to Reyslar: %s", extracted.get("reys_id"))
+    logger.info("Written to row %s in Reyslar", extracted.get("reys_id"))
