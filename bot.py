@@ -37,7 +37,10 @@ def main() -> None:
         logger.info("Bot started — waiting for messages...")
         async with app:
             await app.start()
-            await app.updater.start_polling(allowed_updates=Update.ALL_TYPES)
+           await app.updater.start_polling(
+    allowed_updates=Update.ALL_TYPES,
+    drop_pending_updates=True
+)
             await asyncio.Event().wait()
             await app.updater.stop()
             await app.stop()
