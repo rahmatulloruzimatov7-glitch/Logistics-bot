@@ -30,10 +30,16 @@ COL_SHARTNOMA = 10         # K
 
 
 def _get_client() -> gspread.Client:
-    """Create authenticated gspread client using service account."""
-    creds = Credentials.from_service_account_file(
-        str(CREDENTIALS_PATH), scopes=SCOPES
-    )
+    import json
+    sa_json = os.environ.get("GOOGLE_SERVICE_ACCOUNT_JSON")
+    if sa_json:
+        creds = Credentials.from_service_account_info(
+            json.loads(sa_json), scopes=SCOPES
+        )
+    else:
+        creds = Credentials.from_service_account_file(
+            str(CREDENTIALS_PATH), scopes=SCOPES
+        )
     return gspread.authorize(creds)
 
 
