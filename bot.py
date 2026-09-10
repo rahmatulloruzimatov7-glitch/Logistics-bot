@@ -1,6 +1,8 @@
 import os
 import asyncio
 import logging
+import threading
+from http.server import HTTPServer, BaseHTTPRequestHandler
 from dotenv import load_dotenv
 from telegram import Update
 from telegram.ext import Application, CommandHandler, MessageHandler, filters
@@ -13,6 +15,21 @@ logging.basicConfig(
     format="%(asctime)s %(levelname)s %(name)s: %(message)s",
 )
 logger = logging.getLogger(__name__)
+
+
+class HealthHandler(BaseHTTPRequestHandler):
+    def do_GET(self):
+        self.send_response(200)
+        self.end_headers()
+        self.wfile.write(b"OK")
+    def log_message(self, format, *args):
+        pass
+
+
+def run_health_server():
+    port = int(os.environ.get("PORT", 8080))
+    server = HTTPServer(("0.0.0.0", port), HealthHandler)
+    server.serve_forever()
 
 
 async def start(update: Update, context) -> None:
@@ -29,6 +46,9 @@ def main() -> None:
     if not token:
         logger.error("TELEGRAM_BOT_TOKEN is not set in .env")
         return
+
+    threading.Thread(target=run_health_server, daemon=True).start()
+    logger.info("Health server started")
 
     async def _run():
         app = Application.builder().token(token).build()
